@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "author": "Anonymous maker",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "wokwi-arduino-uno", "id": "uno", "top": -76.2, "left": -259.8, "attrs": {} },
+    { "type": "wokwi-servo", "id": "servo1", "top": -107.6, "left": 211.2, "attrs": {} },
+    { "type": "wokwi-servo", "id": "servo2", "top": -11.6, "left": 211.2, "attrs": {} },
+    { "type": "wokwi-servo", "id": "servo3", "top": 84.4, "left": 211.2, "attrs": {} },
+    { "type": "wokwi-servo", "id": "servo4", "top": 180.4, "left": 211.2, "attrs": {} },
+    { "type": "wokwi-servo", "id": "servo5", "top": -222.8, "left": 211.2, "attrs": {} },
+    { "type": "wokwi-servo", "id": "servo6", "top": 276.4, "left": 211.2, "attrs": {} }
+  ],
+  "connections": [
+    [ "servo5:GND", "uno:GND.2", "black", [ "h-57.6", "v374.4", "h-243.9" ] ],
+    [ "servo1:GND", "uno:GND.2", "black", [ "h-57.6", "v259.2", "h-243.9" ] ],
+    [ "servo2:GND", "uno:GND.2", "black", [ "h-57.6", "v163.2", "h-243.9" ] ],
+    [ "servo3:GND", "uno:GND.2", "black", [ "h-57.6", "v67.2", "h-243.9" ] ],
+    [ "servo4:GND", "uno:GND.2", "black", [ "h-57.6", "v-28.8", "h-243.9" ] ],
+    [ "servo6:GND", "uno:GND.2", "black", [ "h-57.6", "v-124.8", "h-243.9" ] ],
+    [ "servo5:V+", "uno:5V", "red", [ "h-76.8", "v393.7", "h-234.2" ] ],
+    [ "servo1:V+", "uno:5V", "red", [ "h-76.8", "v278.5", "h-234.2" ] ],
+    [ "servo2:V+", "uno:5V", "red", [ "h-76.8", "v182.5", "h-234.2" ] ],
+    [ "servo3:V+", "uno:5V", "red", [ "h-76.8", "v86.5", "h-234.2" ] ],
+    [ "servo4:V+", "uno:5V", "red", [ "h-76.8", "v-9.5", "h-234.2" ] ],
+    [ "servo6:V+", "uno:5V", "red", [ "h-76.8", "v-105.5", "h-234.2" ] ],
+    [ "servo5:PWM", "uno:3", "green", [ "h0" ] ],
+    [ "servo1:PWM", "uno:5", "green", [ "h-57.6", "v-105.4", "h-205.4" ] ],
+    [ "servo2:PWM", "uno:6", "green", [ "h-48", "v-191.8", "h-224.5" ] ],
+    [ "servo3:PWM", "uno:9", "green", [ "h-38.4", "v-278.2", "h-269.6" ] ],
+    [ "servo4:PWM", "uno:10", "green", [ "h-28.8", "v-364.6", "h-288.7" ] ],
+    [ "servo6:PWM", "uno:11", "green", [ "h-19.2", "v-451", "h-307.8" ] ]
+  ],
+  "dependencies": {}
+}
