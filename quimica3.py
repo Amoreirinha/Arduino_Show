@@ -48,7 +48,6 @@ def is_finger_open(tip_y, pip_y):
     return tip_y < pip_y - 0.02
 
 def analyze_hand_gestures(results):
-    """Analisa as mãos na tela e retorna True/False para os estados solicitados."""
     joia_detected = False
     triste_detected = False
     fist_count = 0
@@ -57,7 +56,6 @@ def analyze_hand_gestures(results):
         return False, False, False
 
     for hand_landmarks in results.multi_hand_landmarks:
-        # Marcos das pontas e articulações dos dedos
         tip_th = hand_landmarks.landmark[4]  
         tip_in = hand_landmarks.landmark[8]  
         tip_mi = hand_landmarks.landmark[12] 
@@ -68,7 +66,6 @@ def analyze_hand_gestures(results):
         pip_an = hand_landmarks.landmark[14]
         pip_pi = hand_landmarks.landmark[18]
         
-        # Leituras verticais de orientação (Y cresce para baixo na tela)
         th_up = tip_th.y < pip_th.y - 0.02
         th_down = tip_th.y > pip_th.y + 0.02
         
@@ -77,20 +74,15 @@ def analyze_hand_gestures(results):
         an_open = hand_landmarks.landmark[16].y < pip_an.y - 0.02
         pi_open = hand_landmarks.landmark[20].y < pip_pi.y - 0.02
         
-        # Quatro dedos principais fechados
         four_closed = (not in_open) and (not mi_open) and (not an_open) and (not pi_open)
         
-        # 1. Sinal de Jóia (Polegar para cima, resto fechado)
         if th_up and four_closed:
             joia_detected = True
-        # 2. Jóia ao Contrário (Polegar para baixo, resto fechado)
         elif th_down and four_closed:
             triste_detected = True
-        # 3. Contagem de punhos (Todos os dedos fechados)
         elif four_closed and (not th_up) and (not th_down):
             fist_count += 1
 
-    # Bravo só ativa se as DUAS mãos estiverem fechadas em punho simultaneamente
     bravo_detected = (len(results.multi_hand_landmarks) == 2) and (fist_count == 2)
     
     return joia_detected, triste_detected, bravo_detected
@@ -105,7 +97,6 @@ def draw_hud_panel(frame, x1, y1, x2, y2, alpha=0.6):
     cv2.addWeighted(overlay, alpha, frame, 1 - alpha, 0, frame)
 
 def draw_fullscreen_fallback(frame, cor_bg):
-    """Gera uma tela limpa caso o arquivo de imagem correspondente falte."""
     frame[:] = cor_bg
 
 def draw_bmo(frame, x, y, w_size=210, h_size=250, mood="neutral"):
@@ -194,10 +185,8 @@ while True:
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     results = hands.process(rgb_frame)
 
-    # Coletar estados dos novos gestos
     state_joia, state_triste, state_bravo = analyze_hand_gestures(results)
 
-    # Processamento analógico das barras (Apenas se o simulador estiver ativo e sem interrupções de gestos)
     if results.multi_hand_landmarks and not exploded_state and not (state_joia or state_triste or state_bravo):
         for hand_landmarks in results.multi_hand_landmarks:
             mp_draw.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
@@ -212,25 +201,21 @@ while True:
             dist_pinca = ((pol_x - ind_x)**2 + (pol_y - ind_y)**2)**0.5
             min_pinca, max_pinca = 25, 150
             
-            # MÃO DIREITA -> VOLUME
             if punho_x > 0.5:
                 current_volume = int(((dist_pinca - min_pinca) / (max_pinca - min_pinca)) * 550 + 200)
                 current_volume = max(200, min(current_volume, 750))
                 cv2.line(frame, (pol_x, pol_y), (ind_x, ind_y), (100, 255, 100), 3, lineType=cv2.LINE_AA)
                 cv2.putText(frame, "VOLUME", (ind_x - 30, ind_y - 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 100), 2)
-                
-            # MÃO ESQUERDA -> TEMPERATURE
             else:
                 current_temp = int(((dist_pinca - min_pinca) / (max_pinca - min_pinca)) * 95 + 5)
                 current_temp = max(5, min(current_temp, 100))
                 cv2.line(frame, (pol_x, pol_y), (ind_x, ind_y), (255, 255, 100), 3, lineType=cv2.LINE_AA)
                 cv2.putText(frame, "TEMP", (ind_x - 20, ind_y - 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 100), 2)
 
-    # Máquina lógica de pressão física
     if exploded_state:
         bot_mood = "exploded"
         tempo_decorrido = time.time() - explosion_timer
-        if tempo_decorrido > 3.0: # Duração da tela de explosão
+        if tempo_decorrido > 3.0: 
             exploded_state = False
             current_volume = 450
             current_temp = 40
@@ -248,35 +233,50 @@ while True:
     # MÁQUINA DE RENDERIZAÇÃO E PRIORIDADES VISUAIS
     # ====================================================================
     
-    # PRIORIDADE 1: SISTEMA DE EXPLOSÃO (Tela Branca + Fadeout Kabom)
+    # PRIORIDADE 1: SISTEMA DE EXPLOSÃO (Tela Branca + Fade-in Reverso + Legenda)
     if exploded_state:
-        frame[:] = 255 # Deixa a tela inteira em branco puro
+        frame[:] = 255 # Limpa e deixa a tela inteira branca de início
         
         if img_kabom is not None:
             img_resized = cv2.resize(img_kabom, (w, h))
-            # O fadeout acontece reduzindo a opacidade linearmente ao longo de 2 segundos
-            alpha = max(0.0, 1.0 - ((time.time() - explosion_timer) / 2.0))
+            # FADEOUT AO CONTRÁRIO (Fade-in): Começa em 0.0 (invisível) e vai até 1.0 (totalmente visível)
+            alpha = min(1.0, (time.time() - explosion_timer) / 2.0)
             if alpha > 0:
                 cv2.addWeighted(img_resized, alpha, frame, 1.0 - alpha, 0, frame)
+
+        # Adicionar legenda indicando a explosão (Centralizada embaixo)
+        texto_legenda = "O RECIPIENTE EXPLODIU!"
+        fonte = cv2.FONT_HERSHEY_SIMPLEX
+        escala = 1.3
+        espessura = 4
+        
+        # Calcular tamanho do texto para centralizá-lo perfeitamente na horizontal
+        tamanho_texto, _ = cv2.getTextSize(texto_legenda, fonte, escala, espessura)
+        texto_x = (w - tamanho_texto[0]) // 2
+        texto_y = h - 80
+        
+        # Borda preta para destaque da legenda
+        cv2.putText(frame, texto_legenda, (texto_x, texto_y), fonte, escala, (0, 0, 0), espessura + 3, lineType=cv2.LINE_AA)
+        # Texto principal em vermelho chamativo
+        cv2.putText(frame, texto_legenda, (texto_x, texto_y), fonte, escala, (0, 0, 255), espessura, lineType=cv2.LINE_AA)
 
     # PRIORIDADE 2: OVERLAY DE IMAGEM DO SINAL BRAVO (Punho Duplo)
     elif state_bravo:
         if img_bravo is not None: frame[:] = cv2.resize(img_bravo, (w, h))
-        else: draw_fullscreen_fallback(frame, (40, 40, 180)) # Vermelho se faltar arquivo
+        else: draw_fullscreen_fallback(frame, (40, 40, 180))
 
     # PRIORIDADE 3: OVERLAY DE IMAGEM DO SINAL JÓIA
     elif state_joia:
         if img_joia is not None: frame[:] = cv2.resize(img_joia, (w, h))
-        else: draw_fullscreen_fallback(frame, (100, 200, 100)) # Verde se faltar arquivo
+        else: draw_fullscreen_fallback(frame, (100, 200, 100))
 
     # PRIORIDADE 4: OVERLAY DE IMAGEM DO SINAL TRISTE (Jóia Invertido)
     elif state_triste:
         if img_triste is not None: frame[:] = cv2.resize(img_triste, (w, h))
-        else: draw_fullscreen_fallback(frame, (180, 100, 40)) # Azul se faltar arquivo
+        else: draw_fullscreen_fallback(frame, (180, 100, 40))
 
     # RENDERIZAÇÃO PADRÃO: SIMULADOR E HUD
     else:
-        # Container de Gás
         box_w = current_volume
         box_h = 320
         cx, cy = w // 2, h // 2 + 120
@@ -287,7 +287,6 @@ while True:
         cv2.rectangle(frame, (x_min, y_min), (x_max, y_max), (20, 20, 20), -1)
         cv2.rectangle(frame, (x_min, y_min), (x_max, y_max), cor_borda, 4)
         
-        # Partículas de gás
         r_part = int((current_temp / 100) * 255)
         b_part = int((1 - (current_temp / 100)) * 255)
         cor_particula = (b_part, 100, r_part)
@@ -302,7 +301,6 @@ while True:
             elif p['y'] > y_max - 10: p['y'] = y_max - 12; p['vy'] *= -1
             cv2.circle(frame, (int(p['x']), int(p['y'])), 7, cor_particula, -1, lineType=cv2.LINE_AA)
 
-        # Interfaces HUD laterais e superiores
         draw_hud_panel(frame, 40, 40, 420, 200, alpha=0.75)
         cv2.putText(frame, "CONTROLES ATIVOS POR MAO", (55, 75), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (100, 220, 255), 2)
         cv2.putText(frame, f"Esquerda -> Temp (T): {current_temp} K", (55, 125), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 100), 2)
@@ -316,11 +314,10 @@ while True:
             draw_hud_panel(frame, w//2 - 250, h - 70, w//2 + 250, h - 20, alpha=0.9)
             cv2.putText(frame, "RECIPIENTE EM ESPERA. INSIRA AS MAOS.", (w//2 - 215, h - 42), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (100, 200, 255), 2)
 
-        # Renderização do HUD clássico do BMO no canto superior direito
         draw_bmo(frame, w - 260, 40, mood=bot_mood)
 
     cv2.imshow(NOME_JANELA, frame)
-    if cv2.waitKey(1) & 0xFF == 27: # Pressione ESC para fechar
+    if cv2.waitKey(1) & 0xFF == 27: 
         break
 
 cap.release()
