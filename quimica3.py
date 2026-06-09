@@ -7,7 +7,6 @@ import random
 # CARREGAMENTO DE IMAGENS EXTERNAS
 # ====================================================================
 img_joia = cv2.imread('joia.jpeg')
-img_bravo = cv2.imread('bravo.jpeg')
 img_triste = cv2.imread('triste.jpeg')
 img_kabom = cv2.imread('kabom.jpeg')
 
@@ -16,16 +15,11 @@ mp_hands = mp.solutions.hands
 hands = mp_hands.Hands(max_num_hands=2, min_detection_confidence=0.65)
 mp_draw = mp.solutions.drawing_utils
 
-# PALETA DE CORES DO BMO (Padrão BGR)
-COR_BMO_CORPO       = (170, 195, 115)   
-COR_BMO_TELA        = (195, 240, 200)   
-COR_BMO_TELA_ALERT  = (70, 70, 240)     
-COR_BMO_FACE        = (65, 60, 45)      
-COR_BMO_BOCHECHA    = (160, 170, 255)   
-
+# PALETA DE CORES HUD (Padrão BGR)
 COR_BG_HUD    = (30, 30, 30)       
 COR_TEXTO     = (240, 240, 240)    
 COR_SUCESSO   = (46, 204, 113)     
+COR_ALERTA    = (50, 50, 240)
 
 # ====================================================================
 # CONFIGURAÇÃO DA SIMULAÇÃO DE GASES
@@ -42,18 +36,14 @@ for _ in range(NUM_PARTICULAS):
     })
 
 # ====================================================================
-# FUNÇÕES DE DETECÇÃO DE GESTOS AVANÇADOS
+# FUNÇÕES DE DETECÇÃO DE GESTOS
 # ====================================================================
-def is_finger_open(tip_y, pip_y):
-    return tip_y < pip_y - 0.02
-
 def analyze_hand_gestures(results):
     joia_detected = False
     triste_detected = False
-    fist_count = 0
     
     if not results.multi_hand_landmarks:
-        return False, False, False
+        return False, False
 
     for hand_landmarks in results.multi_hand_landmarks:
         tip_th = hand_landmarks.landmark[4]  
@@ -76,16 +66,14 @@ def analyze_hand_gestures(results):
         
         four_closed = (not in_open) and (not mi_open) and (not an_open) and (not pi_open)
         
+        # 1. Sinal de Jóia (Polegar para cima, resto fechado)
         if th_up and four_closed:
             joia_detected = True
+        # 2. Jóia ao Contrário (Polegar para baixo, resto fechado)
         elif th_down and four_closed:
             triste_detected = True
-        elif four_closed and (not th_up) and (not th_down):
-            fist_count += 1
-
-    bravo_detected = (len(results.multi_hand_landmarks) == 2) and (fist_count == 2)
     
-    return joia_detected, triste_detected, bravo_detected
+    return joia_detected, triste_detected
 
 # ====================================================================
 # FUNÇÕES DE RENDERIZAÇÃO GRÁFICA DO HUD
@@ -99,59 +87,12 @@ def draw_hud_panel(frame, x1, y1, x2, y2, alpha=0.6):
 def draw_fullscreen_fallback(frame, cor_bg):
     frame[:] = cor_bg
 
-def draw_bmo(frame, x, y, w_size=210, h_size=250, mood="neutral"):
-    cv2.rectangle(frame, (x, y), (x + w_size, y + h_size), COR_BMO_CORPO, -1, lineType=cv2.LINE_AA)
-    cv2.rectangle(frame, (x, y), (x + w_size, y + h_size), (130, 155, 85), 3, lineType=cv2.LINE_AA)
-    
-    scale = w_size / 210.0
-    th_margin = int(15 * scale)
-    tw = w_size - (th_margin * 2)
-    th = h_size - int(110 * scale)
-    
-    cor_tela = COR_BMO_TELA_ALERT if mood in ["panic", "exploded"] else COR_BMO_TELA
-    tx1, ty1 = x + th_margin, y + th_margin
-    tx2, ty2 = x + th_margin + tw, y + th_margin + th
-    cv2.rectangle(frame, (tx1, ty1), (tx2, ty2), cor_tela, -1, lineType=cv2.LINE_AA)
-    
-    if w_size == 210:
-        cv2.rectangle(frame, (x + 30, y + 180), (x + 60, y + 195), (40, 40, 40), -1)
-        cv2.rectangle(frame, (x + 40, y + 170), (x + 50, y + 205), (40, 40, 40), -1)
-        cv2.circle(frame, (x + 160, y + 185), 14, (220, 100, 50), -1, lineType=cv2.LINE_AA) 
-        cv2.circle(frame, (x + 120, y + 210), 10, (60, 60, 230), -1, lineType=cv2.LINE_AA)
-
-    cx = tx1 + (tw // 2)
-    cy = ty1 + (th // 2)
-    eye_size = int(8 * scale)
-    mouth_w = int(15 * scale)
-    mouth_h = int(10 * scale)
-    
-    if mood == "happy":
-        cv2.circle(frame, (cx - int(40*scale), cy - int(15*scale)), eye_size, COR_BMO_FACE, -1, lineType=cv2.LINE_AA)
-        cv2.circle(frame, (cx + int(40*scale), cy - int(15*scale)), eye_size, COR_BMO_FACE, -1, lineType=cv2.LINE_AA)
-        cv2.ellipse(frame, (cx, cy + int(10*scale)), (mouth_w, mouth_h), 0, 0, 180, COR_BMO_FACE, 3, lineType=cv2.LINE_AA)
-    elif mood == "neutral":
-        cv2.circle(frame, (cx - int(40*scale), cy - int(15*scale)), eye_size, COR_BMO_FACE, -1, lineType=cv2.LINE_AA)
-        cv2.circle(frame, (cx + int(40*scale), cy - int(15*scale)), eye_size, COR_BMO_FACE, -1, lineType=cv2.LINE_AA)
-        cv2.ellipse(frame, (cx, cy + int(10*scale)), (mouth_w, mouth_h), 0, 0, 180, COR_BMO_FACE, 3, lineType=cv2.LINE_AA)
-    elif mood == "panic":
-        cv2.line(frame, (cx - int(45*scale), cy - int(30*scale)), (cx - int(20*scale), cy - int(25*scale)), COR_BMO_FACE, 3, lineType=cv2.LINE_AA)
-        cv2.line(frame, (cx + int(45*scale), cy - int(30*scale)), (cx + int(20*scale), cy - int(25*scale)), COR_BMO_FACE, 3, lineType=cv2.LINE_AA)
-        cv2.circle(frame, (cx - int(35*scale), cy - int(10*scale)), int(9*scale), COR_BMO_FACE, -1, lineType=cv2.LINE_AA)
-        cv2.circle(frame, (cx + int(35*scale), cy - int(10*scale)), int(9*scale), COR_BMO_FACE, -1, lineType=cv2.LINE_AA)
-        cv2.circle(frame, (cx, cy + int(20*scale)), int(12*scale), COR_BMO_FACE, -1, lineType=cv2.LINE_AA)
-    elif mood == "exploded":
-        cv2.line(frame, (cx - int(45*scale), cy - int(25*scale)), (cx - int(25*scale), cy - int(5*scale)), COR_BMO_FACE, 4, lineType=cv2.LINE_AA)
-        cv2.line(frame, (cx - int(25*scale), cy - int(25*scale)), (cx - int(45*scale), cy - int(5*scale)), COR_BMO_FACE, 4, lineType=cv2.LINE_AA)
-        cv2.line(frame, (cx + int(25*scale), cy - int(25*scale)), (cx + int(45*scale), cy - int(5*scale)), COR_BMO_FACE, 4, lineType=cv2.LINE_AA)
-        cv2.line(frame, (cx + int(45*scale), cy - int(25*scale)), (cx + int(25*scale), cy - int(5*scale)), COR_BMO_FACE, 4, lineType=cv2.LINE_AA)
-        cv2.line(frame, (cx - int(25*scale), cy + int(20*scale)), (cx + int(25*scale), cy + int(20*scale)), COR_BMO_FACE, 4, lineType=cv2.LINE_AA)
-
 # Inicializar Câmera e Fullscreen
 cap = cv2.VideoCapture(0)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 
-NOME_JANELA = "BMO - Simulador de Gases Ideais"
+NOME_JANELA = "Simulador de Gases Ideais"
 cv2.namedWindow(NOME_JANELA, cv2.WINDOW_NORMAL)
 cv2.setWindowProperty(NOME_JANELA, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
@@ -169,9 +110,9 @@ for _ in range(10):
 # Estados físicos iniciais
 current_volume = 450
 current_temp = 40
-bot_mood = "neutral"
 exploded_state = False
 explosion_timer = 0
+pressure = 0
 
 while True:
     ret, frame = cap.read()
@@ -185,9 +126,10 @@ while True:
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     results = hands.process(rgb_frame)
 
-    state_joia, state_triste, state_bravo = analyze_hand_gestures(results)
+    state_joia, state_triste = analyze_hand_gestures(results)
 
-    if results.multi_hand_landmarks and not exploded_state and not (state_joia or state_triste or state_bravo):
+    # Processamento analógico das barras (Apenas se o simulador estiver ativo e sem interrupções de gestos)
+    if results.multi_hand_landmarks and not exploded_state and not (state_joia or state_triste):
         for hand_landmarks in results.multi_hand_landmarks:
             mp_draw.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
             
@@ -201,11 +143,13 @@ while True:
             dist_pinca = ((pol_x - ind_x)**2 + (pol_y - ind_y)**2)**0.5
             min_pinca, max_pinca = 25, 150
             
+            # MÃO DIREITA -> VOLUME
             if punho_x > 0.5:
                 current_volume = int(((dist_pinca - min_pinca) / (max_pinca - min_pinca)) * 550 + 200)
                 current_volume = max(200, min(current_volume, 750))
                 cv2.line(frame, (pol_x, pol_y), (ind_x, ind_y), (100, 255, 100), 3, lineType=cv2.LINE_AA)
                 cv2.putText(frame, "VOLUME", (ind_x - 30, ind_y - 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 255, 100), 2)
+            # MÃO ESQUERDA -> TEMPERATURA
             else:
                 current_temp = int(((dist_pinca - min_pinca) / (max_pinca - min_pinca)) * 95 + 5)
                 current_temp = max(5, min(current_temp, 100))
@@ -213,7 +157,6 @@ while True:
                 cv2.putText(frame, "TEMP", (ind_x - 20, ind_y - 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 100), 2)
 
     if exploded_state:
-        bot_mood = "exploded"
         tempo_decorrido = time.time() - explosion_timer
         if tempo_decorrido > 3.0: 
             exploded_state = False
@@ -221,10 +164,6 @@ while True:
             current_temp = 40
     else:
         pressure = int((current_temp / current_volume) * 2500)
-        if pressure < 120: bot_mood = "happy"
-        elif pressure < 280: bot_mood = "neutral"
-        else: bot_mood = "panic"
-
         if pressure >= 450:
             exploded_state = True
             explosion_timer = time.time()
@@ -235,42 +174,32 @@ while True:
     
     # PRIORIDADE 1: SISTEMA DE EXPLOSÃO (Tela Branca + Fade-in Reverso + Legenda)
     if exploded_state:
-        frame[:] = 255 # Limpa e deixa a tela inteira branca de início
+        frame[:] = 255 
         
         if img_kabom is not None:
             img_resized = cv2.resize(img_kabom, (w, h))
-            # FADEOUT AO CONTRÁRIO (Fade-in): Começa em 0.0 (invisível) e vai até 1.0 (totalmente visível)
             alpha = min(1.0, (time.time() - explosion_timer) / 2.0)
             if alpha > 0:
                 cv2.addWeighted(img_resized, alpha, frame, 1.0 - alpha, 0, frame)
 
-        # Adicionar legenda indicando a explosão (Centralizada embaixo)
         texto_legenda = "O RECIPIENTE EXPLODIU!"
         fonte = cv2.FONT_HERSHEY_SIMPLEX
         escala = 1.3
         espessura = 4
         
-        # Calcular tamanho do texto para centralizá-lo perfeitamente na horizontal
         tamanho_texto, _ = cv2.getTextSize(texto_legenda, fonte, escala, espessura)
         texto_x = (w - tamanho_texto[0]) // 2
         texto_y = h - 80
         
-        # Borda preta para destaque da legenda
         cv2.putText(frame, texto_legenda, (texto_x, texto_y), fonte, escala, (0, 0, 0), espessura + 3, lineType=cv2.LINE_AA)
-        # Texto principal em vermelho chamativo
         cv2.putText(frame, texto_legenda, (texto_x, texto_y), fonte, escala, (0, 0, 255), espessura, lineType=cv2.LINE_AA)
 
-    # PRIORIDADE 2: OVERLAY DE IMAGEM DO SINAL BRAVO (Punho Duplo)
-    elif state_bravo:
-        if img_bravo is not None: frame[:] = cv2.resize(img_bravo, (w, h))
-        else: draw_fullscreen_fallback(frame, (40, 40, 180))
-
-    # PRIORIDADE 3: OVERLAY DE IMAGEM DO SINAL JÓIA
+    # PRIORIDADE 2: OVERLAY DE IMAGEM DO SINAL JÓIA
     elif state_joia:
         if img_joia is not None: frame[:] = cv2.resize(img_joia, (w, h))
         else: draw_fullscreen_fallback(frame, (100, 200, 100))
 
-    # PRIORIDADE 4: OVERLAY DE IMAGEM DO SINAL TRISTE (Jóia Invertido)
+    # PRIORIDADE 3: OVERLAY DE IMAGEM DO SINAL TRISTE (Jóia Invertido)
     elif state_triste:
         if img_triste is not None: frame[:] = cv2.resize(img_triste, (w, h))
         else: draw_fullscreen_fallback(frame, (180, 100, 40))
@@ -279,11 +208,12 @@ while True:
     else:
         box_w = current_volume
         box_h = 320
-        cx, cy = w // 2, h // 2 + 120
+        cx, cy = w // 2, h // 2 + 50
         x_min, x_max = cx - box_w // 2, cx + box_w // 2
         y_min, y_max = cy - box_h // 2, cy + box_h // 2
         
-        cor_borda = (50, 50, 240) if bot_mood == "panic" else (230, 230, 230)
+        # Altera a cor da borda baseado na criticidade da pressão (acima de 280 fica vermelho)
+        cor_borda = COR_ALERTA if pressure >= 280 else (230, 230, 230)
         cv2.rectangle(frame, (x_min, y_min), (x_max, y_max), (20, 20, 20), -1)
         cv2.rectangle(frame, (x_min, y_min), (x_max, y_max), cor_borda, 4)
         
@@ -301,20 +231,19 @@ while True:
             elif p['y'] > y_max - 10: p['y'] = y_max - 12; p['vy'] *= -1
             cv2.circle(frame, (int(p['x']), int(p['y'])), 7, cor_particula, -1, lineType=cv2.LINE_AA)
 
+        # Painéis HUD informativos
         draw_hud_panel(frame, 40, 40, 420, 200, alpha=0.75)
         cv2.putText(frame, "CONTROLES ATIVOS POR MAO", (55, 75), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (100, 220, 255), 2)
         cv2.putText(frame, f"Esquerda -> Temp (T): {current_temp} K", (55, 125), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 100), 2)
         cv2.putText(frame, f"Direita  -> Volume (V): {current_volume} L", (55, 165), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (100, 255, 100), 2)
         
         draw_hud_panel(frame, w // 2 - 150, 40, w // 2 + 150, 120, alpha=0.8)
-        cor_p = (50, 50, 255) if bot_mood == "panic" else COR_SUCESSO
+        cor_p = COR_ALERTA if pressure >= 280 else COR_SUCESSO
         cv2.putText(frame, f"PRESSAO: {pressure} Atm", (w // 2 - 120, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.8, cor_p, 3)
 
         if not results.multi_hand_landmarks:
             draw_hud_panel(frame, w//2 - 250, h - 70, w//2 + 250, h - 20, alpha=0.9)
             cv2.putText(frame, "RECIPIENTE EM ESPERA. INSIRA AS MAOS.", (w//2 - 215, h - 42), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (100, 200, 255), 2)
-
-        draw_bmo(frame, w - 260, 40, mood=bot_mood)
 
     cv2.imshow(NOME_JANELA, frame)
     if cv2.waitKey(1) & 0xFF == 27: 
