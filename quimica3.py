@@ -217,8 +217,8 @@ while True:
     
     for p in particulas:
         if not exploded_state:
-            p['x'] += p['vx'] * velocidad_mult
-            p['y'] += p['vy'] * velocidad_mult
+            p['x'] += p['vx'] * velocidade_mult
+            p['y'] += p['vy'] * velocidade_mult
             
             if p['x'] < x_min + 10: 
                 p['x'] = x_min + 12
